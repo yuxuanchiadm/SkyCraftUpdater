@@ -26,6 +26,7 @@ import net.minecraftforge.fml.common.Loader;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.ModContainer;
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.network.NetworkRegistry;
 import net.minecraftforge.fml.relauncher.Side;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.Level;
@@ -42,6 +43,8 @@ public class Updater {
 	public void preInit(FMLPreInitializationEvent event) {
 		logger = event.getModLog();
 		modContainer = Loader.instance().activeModContainer();
+
+		NetworkRegistry.INSTANCE.newChannel("updater");
 
 		if (event.getSide() == Side.SERVER) return;
 		if (!Configs.enableUpdate) return;

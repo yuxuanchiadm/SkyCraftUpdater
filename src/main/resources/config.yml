@@ -2,3 +2,5 @@ updater:
   clientModsPath: clientmods
   listenIp: 0.0.0.0
   listenPort: 80
+  requireUpdater: true
+  kickMessage: SkyCraft Updater is required to enter this server

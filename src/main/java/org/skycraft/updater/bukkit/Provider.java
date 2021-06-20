@@ -20,6 +20,10 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringEscapeUtils;
+import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
@@ -29,17 +33,28 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.util.log.Logger;
 
-public final class Provider extends JavaPlugin {
+public final class Provider extends JavaPlugin implements Listener {
 	private Path clientModsPath;
 	private Map<String, Path> mods;
 	private String precachedHashes;
 	private Server server;
+
+	@EventHandler
+	public void onPlayerJoin(PlayerJoinEvent event) {
+		if (getConfig().getBoolean("updater.requireUpdater", true)) {
+			Player player = event.getPlayer();
+			if (!player.getListeningPluginChannels().contains("updater")) {
+				player.kickPlayer(getConfig().getString("updater.kickMessage", "SkyCraft Updater is required to enter this server"));
+			}
+		}
+	}
 
 	@Override
 	public void onEnable() {
 		saveDefaultConfig();
 		if (!precacheHashes()) return;
 		if (!startServer()) return;
+		getServer().getPluginManager().registerEvents(this, this);
 		getLogger().log(Level.INFO, "Updater provider successfully started");
 	}
 

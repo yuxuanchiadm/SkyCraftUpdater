@@ -1,4 +1,4 @@
-package org.skycraft.updater.patcher;
+package org.skycraft.updater.core;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
@@ -26,9 +26,8 @@ import javax.swing.JOptionPane;
 import javax.swing.ProgressMonitor;
 import javax.swing.SwingConstants;
 
-public final class Patcher {
+public final class Patcher implements Runnable {
 	private final Logger logger;
-	private JFrame mainFrame;
 	private ProgressMonitor progressMonitor;
 	private volatile boolean cancelled;
 	private String serverIp;
@@ -38,12 +37,13 @@ public final class Patcher {
 	private Map<Path, String> modsToUpdate;
 	private Map<Path, Path> downloadedUpdates;
 
-	public Patcher() {
-		logger = Logger.getLogger("Patcher");
+	public Patcher(Logger logger) {
+		this.logger = logger;
 	}
 
-	private void startPatcher() {
-		mainFrame = new JFrame("SkyCraft Updater");
+	@Override
+	public void run() {
+		JFrame mainFrame = new JFrame("SkyCraft Updater");
 		mainFrame.setMinimumSize(new Dimension(400, 150));
 		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
 		mainFrame.setLocation(screenSize.width / 2 - mainFrame.getSize().width / 2, screenSize.height / 2 - mainFrame.getSize().height / 2);
@@ -226,7 +226,9 @@ public final class Patcher {
 	}
 
 	public static void main(String[] args) {
-		Patcher patcher = new Patcher();
-		patcher.startPatcher();
+		Logger logger = Logger.getLogger("Patcher");
+
+		Patcher patcher = new Patcher(logger);
+		patcher.run();
 	}
 }

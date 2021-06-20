@@ -4,4 +4,4 @@ depend: []
 softdepend: []
 loadbefore: []
 
-main: org.skycraft.updater.bukkit.Provider
+main: org.skycraft.updater.bukkit.BukkitMain

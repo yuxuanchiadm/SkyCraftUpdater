@@ -9,7 +9,9 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -27,7 +29,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.log.Log;
 
-public class Provider implements Runnable, Closeable {
+public final class Provider implements Runnable, Closeable {
 	private final Logger logger;
 	private final Path clientModsPath;
 	private final InetSocketAddress address;
@@ -178,5 +180,35 @@ public class Provider implements Runnable, Closeable {
 		@Override public void debug(String msg, Throwable thrown) { }
 		@Override public org.eclipse.jetty.util.log.Logger getLogger(String name) { return this; }
 		@Override public void ignore(Throwable ignored) { }
+	}
+
+	public static void main(String[] args) {
+		if (args.length < 3) {
+			System.err.println("Arguments: <clientModsPath> <serverIp> <serverPort>");
+			return;
+		}
+		Logger logger = Logger.getLogger("Provider");
+		Path clientModsPath;
+		try {
+			clientModsPath = Paths.get(args[0]);
+		} catch (InvalidPathException e) {
+			logger.log(Level.SEVERE, "Invalid client mods path", e);
+			return;
+		}
+		String serverIp = args[1];
+		int serverPort;
+		try {
+			serverPort = Integer.parseInt(args[2]);
+		} catch (NumberFormatException e) {
+			logger.log(Level.SEVERE, "Invalid server port", e);
+			return;
+		}
+
+		Provider provider = new Provider(
+			logger,
+			clientModsPath,
+			new InetSocketAddress(serverIp, serverPort)
+		);
+		provider.run();
 	}
 }

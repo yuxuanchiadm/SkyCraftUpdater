@@ -1,0 +1,16 @@
+[
+{
+  "modid": "updater",
+  "name": "SkyCraft Updater",
+  "description": "SkyCraft mods updater.",
+  "version": "${version}",
+  "mcversion": "${mcversion}",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["yuxuanchiadm"],
+  "credits": "Made by SkyCraft dev team",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": []
+}
+]

@@ -1,0 +1,7 @@
+﻿name: SkyCraftUpdater
+version: ${version}
+depend: []
+softdepend: []
+loadbefore: []
+
+main: org.skycraft.updater.bukkit.Provider

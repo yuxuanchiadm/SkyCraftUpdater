@@ -20,11 +20,14 @@ public final class BukkitMain extends JavaPlugin implements Listener {
 	@Override
 	public void onEnable() {
 		saveDefaultConfig();
+		getConfig().options().copyHeader(true);
+		getConfig().options().copyDefaults(true);
+		saveConfig();
 		getServer().getPluginManager().registerEvents(this, this);
 
 		Path clientModsPath;
 		try {
-			clientModsPath = Paths.get(getConfig().getString("updater.clientModsPath", "clientmods"));
+			clientModsPath = Paths.get(getConfig().getString("updater.clientModsPath"));
 		} catch (InvalidPathException e) {
 			getLogger().log(Level.SEVERE, "Invalid client mods path", e);
 			return;
@@ -42,12 +45,14 @@ public final class BukkitMain extends JavaPlugin implements Listener {
 			return;
 		}
 
-		provider = new Provider(
-			getLogger(),
-			clientModsPath,
-			new InetSocketAddress(getConfig().getString("updater.listenIp", "0.0.0.0"), getConfig().getInt("updater.listenPort", 80))
-		);
-		provider.run();
+		if (getConfig().getBoolean("updater.enableProvider")) {
+			provider = new Provider(
+				getLogger(),
+				clientModsPath,
+				new InetSocketAddress(getConfig().getString("updater.listenIp"), getConfig().getInt("updater.listenPort"))
+			);
+			provider.run();
+		}
 	}
 
 	@Override
@@ -60,10 +65,10 @@ public final class BukkitMain extends JavaPlugin implements Listener {
 
 	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event) {
-		if (getConfig().getBoolean("updater.requireUpdater", true)) {
+		if (getConfig().getBoolean("updater.requireUpdater")) {
 			Player player = event.getPlayer();
 			if (!player.getListeningPluginChannels().contains("updater")) {
-				player.kickPlayer(getConfig().getString("updater.kickMessage", "SkyCraft Updater is required to enter this server"));
+				player.kickPlayer(getConfig().getString("updater.kickMessage"));
 			}
 		}
 	}

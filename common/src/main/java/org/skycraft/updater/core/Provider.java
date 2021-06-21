@@ -42,6 +42,7 @@ public final class Provider implements Runnable, Closeable {
 	private final InetSocketAddress address;
 	private Map<String, ManifestEntry> manifest;
 	private Map<String, ManifestCategory> categories;
+	private Map<String, Path> globalFiles;
 	private String precachedManifest;
 	private Server server;
 
@@ -135,13 +136,14 @@ public final class Provider implements Runnable, Closeable {
 	private boolean precacheHashes() {
 		logger.log(Level.INFO, "Precaching manifest hashes...");
 		Map<String, ManifestCategory> categories = new HashMap<>();
+		Map<String, Path> globalFiles = new HashMap<>();
 		for (Map.Entry<String, ManifestEntry> entry : manifest.entrySet()) {
 			HashMap<String, Path> files = new HashMap<>();
 			StringWriter out = new StringWriter();
 			try (JsonWriter writer = new JsonWriter(out)) {
 				writer.setIndent("    ");
 				writer.beginArray();
-				Path categoryPath = clientPath.resolve(entry.getValue().path);
+				Path categoryPath = clientPath.resolve(entry.getValue().getPath());
 				if (Files.exists(categoryPath)) {
 					for (Path path : (Iterable<? extends Path>) Files.walk(categoryPath)::iterator) {
 						if (!Files.isRegularFile(path)) continue;
@@ -153,11 +155,12 @@ public final class Provider implements Runnable, Closeable {
 							continue;
 						}
 						files.put(hash, path);
+						globalFiles.put(hash, path);
 						writer.beginObject();
 						writer.name("path").value(categoryPath.relativize(path).toString());
 						writer.name("hash").value(hash);
 						writer.endObject();
-						logger.log(Level.INFO, "Found category \"" + entry.getValue().category + "\" file \"" + categoryPath.relativize(path) + "\" with hash \"" + hash + "\"");
+						logger.log(Level.INFO, "Found category \"" + entry.getValue().getCategory() + "\" file \"" + categoryPath.relativize(path) + "\" with hash \"" + hash + "\"");
 					}
 				}
 				writer.endArray();
@@ -169,6 +172,7 @@ public final class Provider implements Runnable, Closeable {
 			categories.put(entry.getKey(), category);
 		}
 		this.categories = categories;
+		this.globalFiles = globalFiles;
 		logger.log(Level.INFO, "Manifest hashes successfully precached");
 		return true;
 	}
@@ -213,23 +217,17 @@ public final class Provider implements Runnable, Closeable {
 					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 					return;
 				}
-				logger.log(Level.INFO, "Sending category \"" + category.entry.category + "\" hashes to client " + req.getRemoteAddr());
+				logger.log(Level.INFO, "Sending category \"" + category.getEntry().getCategory() + "\" hashes to client " + req.getRemoteAddr());
 				resp.setContentType("application/json; charset=utf-8");
 				try (PrintWriter out = resp.getWriter()) {
-					out.write(category.precachedHashes);
+					out.write(category.getPrecachedHashes());
 				}
 			}
 		}), "/hashes");
 		handler.addServlet(new ServletHolder(new HttpServlet() {
 			@Override
 			protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-				if (categories == null) {
-					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-					return;
-				}
-				String categoryName = Optional.ofNullable(req.getParameter("category")).orElse(DEFAULT_CATEGORY);
-				ManifestCategory category = categories.get(categoryName);
-				if (category == null) {
+				if (globalFiles == null) {
 					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 					return;
 				}
@@ -238,13 +236,12 @@ public final class Provider implements Runnable, Closeable {
 					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 					return;
 				}
-				Path path = category.files.get(hash);
+				Path path = globalFiles.get(hash);
 				if (path == null) {
 					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
 					return;
 				}
-				Path categoryPath = clientPath.resolve(category.entry.path);
-				logger.log(Level.INFO, "Sending category \"" + category.entry.category + "\" file \"" + categoryPath.relativize(path) + "\" with hash \"" + hash + "\" to client " + req.getRemoteAddr());
+				logger.log(Level.INFO, "Sending category file \"" + path + "\" with hash \"" + hash + "\" to client " + req.getRemoteAddr());
 				resp.setContentType("application/octet-stream");
 				resp.setHeader("Content-Disposition", "attachment; filename=" + StringEscapeUtils.escapeJava(path.getFileName().toString()));
 				try (InputStream in = Files.newInputStream(path); OutputStream out = resp.getOutputStream()) {
@@ -326,6 +323,14 @@ public final class Provider implements Runnable, Closeable {
 			this.category = category;
 			this.path = path;
 		}
+
+		public String getCategory() {
+			return category;
+		}
+
+		public Path getPath() {
+			return path;
+		}
 	}
 
 	public static final class ManifestCategory {
@@ -337,6 +342,18 @@ public final class Provider implements Runnable, Closeable {
 			this.entry = entry;
 			this.files = files;
 			this.precachedHashes = precachedHashes;
+		}
+
+		public ManifestEntry getEntry() {
+			return entry;
+		}
+
+		public Map<String, Path> getFiles() {
+			return files;
+		}
+
+		public String getPrecachedHashes() {
+			return precachedHashes;
 		}
 	}
 }

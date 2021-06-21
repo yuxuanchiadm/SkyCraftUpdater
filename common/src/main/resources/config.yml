@@ -1,6 +1,7 @@
 updater:
   enableProvider: true
-  clientModsPath: clientmods
+  clientPath: client
+  manifestPath: client_manifest.json
   listenIp: 0.0.0.0
   listenPort: 80
   requireUpdater: true

@@ -25,30 +25,51 @@ public final class BukkitMain extends JavaPlugin implements Listener {
 		saveConfig();
 		getServer().getPluginManager().registerEvents(this, this);
 
-		Path clientModsPath;
+		Path clientPath;
 		try {
-			clientModsPath = Paths.get(getConfig().getString("updater.clientModsPath"));
+			clientPath = Paths.get(getConfig().getString("updater.clientPath"));
 		} catch (InvalidPathException e) {
-			getLogger().log(Level.SEVERE, "Invalid client mods path", e);
+			getLogger().log(Level.SEVERE, "Invalid client path", e);
 			return;
 		}
-		if (!Files.exists(clientModsPath)) {
+		if (!Files.exists(clientPath)) {
 			try {
-				Files.createDirectories(clientModsPath);
+				Files.createDirectories(clientPath);
 			} catch (IOException e) {
-				getLogger().log(Level.SEVERE, "Could not create client mods folder", e);
+				getLogger().log(Level.SEVERE, "Could not create client folder", e);
 				return;
 			}
 		}
-		if (!Files.isDirectory(clientModsPath)) {
-			getLogger().log(Level.SEVERE, "Client mods folder is not directory");
+		if (!Files.isDirectory(clientPath)) {
+			getLogger().log(Level.SEVERE, "Client folder is not directory");
+			return;
+		}
+
+		Path manifestPath;
+		try {
+			manifestPath = Paths.get(getConfig().getString("updater.manifestPath"));
+		} catch (InvalidPathException e) {
+			getLogger().log(Level.SEVERE, "Invalid manifest path", e);
+			return;
+		}
+		if (!Files.exists(manifestPath)) {
+			try {
+				Files.copy(getResource("client_manifest.json"), manifestPath);
+			} catch (IOException e) {
+				getLogger().log(Level.SEVERE, "Could not save default manifest", e);
+				return;
+			}
+		}
+		if (!Files.isRegularFile(manifestPath)) {
+			getLogger().log(Level.SEVERE, "Manifest is not regular file");
 			return;
 		}
 
 		if (getConfig().getBoolean("updater.enableProvider")) {
 			provider = new Provider(
 				getLogger(),
-				clientModsPath,
+				clientPath,
+				manifestPath,
 				new InetSocketAddress(getConfig().getString("updater.listenIp"), getConfig().getInt("updater.listenPort"))
 			);
 			provider.run();

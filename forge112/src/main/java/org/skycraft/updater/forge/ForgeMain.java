@@ -34,15 +34,15 @@ public final class ForgeMain {
 		if (!Configs.enableUpdate) return;
 		if (modContainer == null) return;
 
-		File canonicalModsDir;
+		File minecraftDir;
 		try {
-			Field field = Loader.class.getDeclaredField("canonicalModsDir");
+			Field field = Loader.class.getDeclaredField("minecraftDir");
 			field.setAccessible(true);
-			canonicalModsDir = (File) field.get(Loader.instance());
+			minecraftDir = (File) field.get(Loader.instance());
 		} catch (ReflectiveOperationException e) {
 			throw new RuntimeException(e);
 		}
-		Path modsPath = canonicalModsDir.toPath();
+		Path clientPath = minecraftDir.toPath();
 
 		List<Path> ignores;
 		try {
@@ -56,7 +56,7 @@ public final class ForgeMain {
 			java.util.logging.Logger.getLogger("Updater"),
 			new InetSocketAddress(Configs.serverIp, Configs.serverPort),
 			modContainer.getSource().toPath(),
-			modsPath,
+			clientPath,
 			ignores,
 			() -> FMLCommonHandler.instance().exitJava(0, true)
 		);

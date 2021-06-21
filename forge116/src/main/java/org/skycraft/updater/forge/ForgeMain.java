@@ -94,7 +94,7 @@ public final class ForgeMain {
 			java.util.logging.Logger.getLogger("Updater"),
 			new InetSocketAddress(CONFIG_SERVER_IP.get(), CONFIG_SERVER_PORT.get()),
 			modFileInfo.getFile().getFilePath(),
-			FMLPaths.MODSDIR.get(),
+			FMLPaths.GAMEDIR.get(),
 			ignores,
 			() -> System.exit(0)
 		);

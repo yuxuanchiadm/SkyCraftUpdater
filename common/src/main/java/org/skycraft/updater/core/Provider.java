@@ -157,7 +157,7 @@ public final class Provider implements Runnable, Closeable {
 						writer.name("path").value(categoryPath.relativize(path).toString());
 						writer.name("hash").value(hash);
 						writer.endObject();
-						logger.log(Level.INFO, "Found file \"" + path + "\" with hash \"" + hash + "\"");
+						logger.log(Level.INFO, "Found category \"" + entry.getValue().category + "\" file \"" + categoryPath.relativize(path) + "\" with hash \"" + hash + "\"");
 					}
 				}
 				writer.endArray();

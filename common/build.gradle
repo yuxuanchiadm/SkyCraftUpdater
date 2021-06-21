@@ -1,0 +1,40 @@
+apply plugin: "java-library"
+
+version = "${version_major}.${version_minor}.${version_patch}"
+group = "${artifact_group}"
+archivesBaseName = "${artifact_basename}-common"
+
+sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = "1.8"
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven {
+        name = "Spigot maven"
+        url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
+    }
+}
+
+dependencies {
+    compileOnly "org.bukkit:bukkit:1.8-R0.1-SNAPSHOT"
+    compile "commons-lang:commons-lang:2.6"
+    compile "commons-codec:commons-codec:1.10"
+    compile "commons-io:commons-io:2.5"
+    compile "org.eclipse.jetty:jetty-server:9.4.42.v20210604"
+    compile "org.eclipse.jetty:jetty-servlet:9.4.42.v20210604"
+    compile "com.google.code.gson:gson:2.8.7"
+}
+
+processResources {
+    inputs.property "version", project.version
+
+    from(sourceSets.main.resources.srcDirs) {
+        include "plugin.yml"
+
+        expand "version": project.version
+    }
+
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "plugin.yml"
+    }
+}

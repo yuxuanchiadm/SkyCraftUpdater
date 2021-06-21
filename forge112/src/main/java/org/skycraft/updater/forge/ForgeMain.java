@@ -53,7 +53,7 @@ public final class ForgeMain {
 		}
 
 		Updater updater = new Updater(
-			logger,
+			java.util.logging.Logger.getLogger("Updater"),
 			new InetSocketAddress(Configs.serverIp, Configs.serverPort),
 			modContainer.getSource().toPath(),
 			modsPath,

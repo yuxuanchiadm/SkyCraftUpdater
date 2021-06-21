@@ -1,0 +1,86 @@
+buildscript {
+    repositories {
+        maven { url = "https://files.minecraftforge.net/maven" }
+        jcenter()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "net.minecraftforge.gradle:ForgeGradle:4.1.+"
+        classpath "com.github.jengelman.gradle.plugins:shadow:4.0.4"
+    }
+}
+
+apply plugin: "net.minecraftforge.gradle"
+apply plugin: "com.github.johnrengelman.shadow"
+
+version = "${version_major}.${version_minor}.${version_patch}"
+group = "${artifact_group}"
+archivesBaseName = "${artifact_basename}-${minecraft_version}"
+
+sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = "1.8"
+
+minecraft {
+    mappings channel: "${mcp_channel}", version: "${mcp_mappings}"
+
+    runs {
+        client {
+            workingDirectory project.file("run")
+
+            property "forge.logging.markers", "SCAN,REGISTRIES,REGISTRYDUMP"
+            property "forge.logging.console.level", "debug"
+        }
+
+        server {
+            property "forge.logging.markers", "SCAN,REGISTRIES,REGISTRYDUMP"
+            property "forge.logging.console.level", "debug"
+        }
+    }
+}
+
+repositories {
+    maven {
+        name = "Spigot maven"
+        url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
+    }
+}
+
+configurations {
+    shade
+    compile.extendsFrom shade
+}
+
+dependencies {
+    minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+    shade project(":common")
+}
+
+shadowJar {
+    def packages = [
+        "org.apache.commons",
+        "org.eclipse.jetty",
+        "javax.servlet",
+        "com.google.gson"
+    ]
+    packages.each { relocate(it, "org.skycraft.updater.shades.${it}") }
+    classifier null
+    configurations = [project.configurations.shade]
+}
+
+reobf {
+    shadowJar {}
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft_version
+
+    from(sourceSets.main.resources.srcDirs) {
+        include "mcmod.info"
+
+        expand "version": project.version, "mcversion": project.minecraft_version
+    }
+
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "mcmod.info"
+    }
+}

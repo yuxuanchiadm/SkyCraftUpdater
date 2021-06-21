@@ -5,7 +5,7 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath "net.minecraftforge.gradle:ForgeGradle:3.+"
+        classpath "net.minecraftforge.gradle:ForgeGradle:4.1.+"
         classpath "com.github.jengelman.gradle.plugins:shadow:4.0.4"
     }
 }
@@ -24,18 +24,49 @@ minecraft {
 
     runs {
         client {
-            workingDirectory project.file("run")
+            workingDirectory project.file('run')
 
-            property "forge.logging.markers", "SCAN,REGISTRIES,REGISTRYDUMP"
-            property "forge.logging.console.level", "debug"
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                updater {
+                    source sourceSets.main
+                }
+            }
         }
 
         server {
-            property "forge.logging.markers", "SCAN,REGISTRIES,REGISTRYDUMP"
-            property "forge.logging.console.level", "debug"
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            mods {
+                updater {
+                    source sourceSets.main
+                }
+            }
+        }
+
+        data {
+            workingDirectory project.file('run')
+
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+
+            args '--mod', 'examplemod', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
+
+            mods {
+                updater {
+                    source sourceSets.main
+                }
+            }
         }
     }
 }
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
     maven {
@@ -51,14 +82,7 @@ configurations {
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
-
-    compile "org.bukkit:bukkit:1.8-R0.1-SNAPSHOT"
-    shade "commons-lang:commons-lang:2.6"
-    shade "commons-codec:commons-codec:1.10"
-    shade "commons-io:commons-io:2.5"
-    shade "org.eclipse.jetty:jetty-server:9.4.42.v20210604"
-    shade "org.eclipse.jetty:jetty-servlet:9.4.42.v20210604"
-    shade "com.google.code.gson:gson:2.8.7"
+    shade project(":common")
 }
 
 shadowJar {
@@ -79,17 +103,14 @@ reobf {
 
 processResources {
     inputs.property "version", project.version
-    inputs.property "mcversion", project.minecraft_version
 
     from(sourceSets.main.resources.srcDirs) {
-        include "mcmod.info"
-        include "plugin.yml"
+        include "META-INF/mods.toml"
 
-        expand "version": project.version, "mcversion": project.minecraft_version
+        expand "version": project.version
     }
 
     from(sourceSets.main.resources.srcDirs) {
-        exclude "mcmod.info"
-        exclude "plugin.yml"
+        exclude "META-INF/mcmod.toml"
     }
 }

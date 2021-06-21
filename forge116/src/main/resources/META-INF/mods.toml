@@ -1,0 +1,11 @@
+modLoader="javafml"
+loaderVersion="[36,)"
+license="MIT"
+
+[[mods]]
+modId="updater"
+version="${version}"
+displayName="SkyCraft Updater"
+credits="Made by SkyCraft dev team"
+authors="yuxuanchiadm"
+description="SkyCraft mods updater."

@@ -1,0 +1,3 @@
+include ":common", ":forge112", ":forge116"
+
+rootProject.name = "Updater"

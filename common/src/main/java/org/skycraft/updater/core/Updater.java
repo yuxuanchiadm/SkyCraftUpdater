@@ -20,9 +20,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.Logger;
 
 public final class Updater implements Runnable {
 	private final Logger logger;
@@ -58,7 +58,7 @@ public final class Updater implements Runnable {
 		try {
 			URLConnection connection = new URL("http", address.getHostString(), address.getPort(), "/hashes").openConnection();
 			if (!(connection instanceof HttpURLConnection)) {
-				logger.log(Level.WARN, "Could not contact update server");
+				logger.log(Level.WARNING, "Could not contact update server");
 				return Optional.empty();
 			}
 			HttpURLConnection http = (HttpURLConnection) connection;
@@ -66,20 +66,20 @@ public final class Updater implements Runnable {
 				http.setRequestMethod("GET");
 				http.connect();
 				if (http.getResponseCode() != 200) {
-					logger.log(Level.WARN, "Could not contact update server, response code = " + http.getResponseCode());
+					logger.log(Level.WARNING, "Could not contact update server, response code = " + http.getResponseCode());
 					return Optional.empty();
 				}
 				try (JsonReader json = new JsonReader(new InputStreamReader(http.getInputStream(), StandardCharsets.UTF_8))) {
 					return parseHashes(json);
 				} catch (IllegalStateException e) {
-					logger.log(Level.WARN, "Illegal hashes format", e);
+					logger.log(Level.WARNING, "Illegal hashes format", e);
 					return Optional.empty();
 				}
 			} finally {
 				http.disconnect();
 			}
 		} catch (IOException e) {
-			logger.log(Level.WARN, "Could not contact update server", e);
+			logger.log(Level.WARNING, "Could not contact update server", e);
 			return Optional.empty();
 		}
 	}
@@ -97,7 +97,7 @@ public final class Updater implements Runnable {
 					try {
 						path = Paths.get(json.nextString());
 					} catch (InvalidPathException e) {
-						logger.log(Level.WARN, "Illegal hashes format", e);
+						logger.log(Level.WARNING, "Illegal hashes format", e);
 						return Optional.empty();
 					}
 					break;
@@ -105,12 +105,12 @@ public final class Updater implements Runnable {
 					hash = json.nextString();
 					break;
 				default:
-					logger.log(Level.WARN, "Illegal hashes format");
+					logger.log(Level.WARNING, "Illegal hashes format");
 					return Optional.empty();
 				}
 			}
 			if (path == null || hash == null) {
-				logger.log(Level.WARN, "Illegal hashes format");
+				logger.log(Level.WARNING, "Illegal hashes format");
 				return Optional.empty();
 			}
 			hashes.put(path, hash);
@@ -132,13 +132,13 @@ public final class Updater implements Runnable {
 				try (InputStream stream = Files.newInputStream(path)) {
 					hash = DigestUtils.md5Hex(stream);
 				} catch (IOException e) {
-					logger.log(Level.WARN, "Could not calculate mod hash", e);
+					logger.log(Level.WARNING, "Could not calculate mod hash", e);
 					continue;
 				}
 				hashes.put(modsPath.relativize(path), hash);
 			}
 		} catch (IOException e) {
-			logger.log(Level.WARN, "Error occurred while calculating mod hashes", e);
+			logger.log(Level.WARNING, "Error occurred while calculating mod hashes", e);
 			return Optional.empty();
 		}
 		return Optional.of(hashes);
@@ -166,7 +166,7 @@ public final class Updater implements Runnable {
 		}
 
 		if (!Files.isRegularFile(patcherPath)) {
-			logger.log(Level.WARN, "Could not find patcher jar, skipping update");
+			logger.log(Level.WARNING, "Could not find patcher jar, skipping update");
 			return;
 		}
 
@@ -176,7 +176,7 @@ public final class Updater implements Runnable {
 		try {
 			patcherPath = Files.copy(this.patcherPath, Files.createTempFile("Patcher", ".jar"), StandardCopyOption.REPLACE_EXISTING);
 		} catch (IOException e) {
-			logger.log(Level.WARN, "Could not copy patcher", e);
+			logger.log(Level.WARNING, "Could not copy patcher", e);
 			return;
 		}
 
@@ -200,7 +200,7 @@ public final class Updater implements Runnable {
 				}
 			}
 		} catch (IOException e) {
-			logger.log(Level.WARN, "Could not start patcher process", e);
+			logger.log(Level.WARNING, "Could not start patcher process", e);
 			return;
 		}
 		exitJava.run();

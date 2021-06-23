@@ -1,0 +1,75 @@
+buildscript {
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.github.jengelman.gradle.plugins:shadow:4.0.4"
+    }
+}
+
+apply plugin: "java-library"
+apply plugin: "com.github.johnrengelman.shadow"
+
+version = "${version_major}.${version_minor}.${version_patch}"
+group = "${artifact_group}"
+archivesBaseName = "${artifact_basename}-${minecraft_version}"
+
+sourceCompatibility = targetCompatibility = compileJava.sourceCompatibility = compileJava.targetCompatibility = "1.8"
+
+repositories {
+    jcenter()
+    mavenCentral()
+    maven {
+        name = "Forge maven"
+        url = "http://maven.minecraftforge.net/"
+        metadataSources { artifact() }
+    }
+    maven {
+        name = "Spigot maven"
+        url = "https://hub.spigotmc.org/nexus/content/repositories/snapshots/"
+    }
+}
+
+configurations {
+    shade
+    compile.extendsFrom shade
+}
+
+dependencies {
+    compile "org.apache.logging.log4j:log4j-api:2.8.1"
+    compile "io.netty:netty-all:4.1.9.Final"
+    compile "net.minecraftforge:forge:${minecraft_version}-${forge_version}:universal"
+    shade project(":common")
+}
+
+shadowJar {
+    def packages = [
+        "org.apache.commons",
+        "org.eclipse.jetty",
+        "javax.servlet",
+        "com.google.gson"
+    ]
+    packages.each { relocate(it, "org.skycraft.updater.shades.${it}") }
+    classifier null
+    configurations = [project.configurations.shade]
+}
+
+build {
+    dependsOn shadowJar
+}
+
+processResources {
+    inputs.property "version", project.version
+    inputs.property "mcversion", project.minecraft_version
+
+    from(sourceSets.main.resources.srcDirs) {
+        include "mcmod.info"
+
+        expand "version": project.version, "mcversion": project.minecraft_version
+    }
+
+    from(sourceSets.main.resources.srcDirs) {
+        exclude "mcmod.info"
+    }
+}

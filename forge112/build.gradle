@@ -56,10 +56,12 @@ dependencies {
 
 shadowJar {
     def packages = [
-        "org.apache.commons",
-        "org.eclipse.jetty",
-        "javax.servlet",
-        "com.google.gson"
+        "org.apache.commons.lang.",
+        "org.apache.commons.io.",
+        "org.apache.commons.codec.",
+        "org.eclipse.jetty.",
+        "javax.servlet.",
+        "com.google.gson."
     ]
     packages.each { relocate(it, "org.skycraft.updater.shades.${it}") }
     classifier null

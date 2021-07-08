@@ -28,7 +28,7 @@ public final class ForgeMain {
 		Logger logger = event.getModLog();
 		ModContainer modContainer = Loader.instance().activeModContainer();
 
-		NetworkRegistry.INSTANCE.newChannel("updater");
+		if (Configs.contactServer) NetworkRegistry.INSTANCE.newChannel("updater");
 
 		if (event.getSide() == Side.SERVER) return;
 		if (!Configs.enableUpdate) return;
@@ -66,6 +66,8 @@ public final class ForgeMain {
 	@Config(modid = "updater")
 	public static class Configs {
 		public static boolean enableUpdate = true;
+
+		public static boolean contactServer = true;
 
 		public static String[] ignores = {};
 

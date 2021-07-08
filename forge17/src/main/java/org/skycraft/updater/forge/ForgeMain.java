@@ -37,6 +37,7 @@ public final class ForgeMain {
 		Configuration configuration = new Configuration(new File(event.getModConfigurationDirectory(), "updater.cfg"));
 		configuration.load();
 		Configs.enableUpdate = configuration.getBoolean("enableUpdate", "general", Configs.enableUpdate, "Enable update");
+		Configs.contactServer = configuration.getBoolean("contactServer", "general", Configs.contactServer, "Contact server");
 		Configs.ignores = configuration.getStringList("ignores", "general", Configs.ignores, "Ignores");
 		Configs.serverIp = configuration.getString("serverIp", "general", Configs.serverIp, "Server ip");
 		Configs.serverPort = configuration.getInt("enableUpdate", "general", Configs.serverPort, 0, 0xFFFF, "Server port");
@@ -45,7 +46,7 @@ public final class ForgeMain {
 		Logger logger = event.getModLog();
 		ModContainer modContainer = Loader.instance().activeModContainer();
 
-		NetworkRegistry.INSTANCE.newChannel("updater", new UpdaterChannelHandler());
+		if (Configs.contactServer) NetworkRegistry.INSTANCE.newChannel("updater", new UpdaterChannelHandler());
 
 		if (event.getSide() == Side.SERVER) return;
 		if (!Configs.enableUpdate) return;
@@ -82,6 +83,8 @@ public final class ForgeMain {
 
 	public static class Configs {
 		public static boolean enableUpdate = true;
+
+		public static boolean contactServer = true;
 
 		public static String[] ignores = {};
 

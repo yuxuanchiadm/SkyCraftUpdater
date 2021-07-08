@@ -39,6 +39,7 @@ public final class ForgeMain {
 
 	public static final ForgeConfigSpec CONFIG;
 	public static final ForgeConfigSpec.BooleanValue CONFIG_ENABLE_UPDATE;
+	public static final ForgeConfigSpec.BooleanValue CONFIG_CONTACT_SERVER;
 	public static final ForgeConfigSpec.ConfigValue<List<? extends String>> CONFIG_IGNORES;
 	public static final ForgeConfigSpec.ConfigValue<String> CONFIG_SERVER_IP;
 	public static final ForgeConfigSpec.IntValue CONFIG_SERVER_PORT;
@@ -48,6 +49,7 @@ public final class ForgeMain {
 
 		builder.push("general");
 		CONFIG_ENABLE_UPDATE = builder.define("enableUpdate", true);
+		CONFIG_CONTACT_SERVER = builder.define("contactServer", true);
 		CONFIG_IGNORES = builder.defineListAllowEmpty(Collections.singletonList("ignores"), ArrayList::new, String.class::isInstance);
 		CONFIG_SERVER_IP = builder.define("serverIp", "127.0.0.1");
 		CONFIG_SERVER_PORT = builder.defineInRange("serverPort", 80, 0, 0xFFFF);
@@ -63,6 +65,7 @@ public final class ForgeMain {
 	}
 
 	private void playerLogin(ClientPlayerNetworkEvent.LoggedInEvent event) {
+		if (!CONFIG_CONTACT_SERVER.get()) return;
         PacketBuffer pb = new PacketBuffer(Unpooled.buffer());
 		ByteArrayOutputStream bos = new ByteArrayOutputStream();
 		try {

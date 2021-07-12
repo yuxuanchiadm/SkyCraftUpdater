@@ -40,7 +40,7 @@ public final class ForgeMain {
 		Configs.contactServer = configuration.getBoolean("contactServer", "general", Configs.contactServer, "Contact server");
 		Configs.ignores = configuration.getStringList("ignores", "general", Configs.ignores, "Ignores");
 		Configs.serverIp = configuration.getString("serverIp", "general", Configs.serverIp, "Server ip");
-		Configs.serverPort = configuration.getInt("enableUpdate", "general", Configs.serverPort, 0, 0xFFFF, "Server port");
+		Configs.serverPort = configuration.getInt("serverPort", "general", Configs.serverPort, 0, 0xFFFF, "Server port");
 		if (configuration.hasChanged()) configuration.save();
 
 		Logger logger = event.getModLog();

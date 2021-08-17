@@ -92,6 +92,7 @@ public final class Provider implements Runnable, Closeable {
 				writer.beginObject();
 				String category = null;
 				Path path = null;
+				boolean removeUntracked = true;
 				while (reader.hasNext()) {
 					switch (reader.nextName()) {
 					case "category":
@@ -106,6 +107,10 @@ public final class Provider implements Runnable, Closeable {
 							return false;
 						}
 						writer.name("path").value(path.toString());
+						break;
+					case "removeUntracked":
+						removeUntracked = reader.nextBoolean();
+						writer.name("removeUntracked").value(removeUntracked);
 						break;
 					default:
 						logger.log(Level.WARNING, "Illegal manifest format");

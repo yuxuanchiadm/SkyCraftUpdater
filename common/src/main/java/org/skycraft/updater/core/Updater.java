@@ -47,11 +47,18 @@ public final class Updater implements Runnable {
 	public void run() {
 		Map<Path, String> globalServerHashes = new HashMap<>();
 		Map<Path, String> globalClientHashes = new HashMap<>();
-		downloadManifest().forEach((category, categoryPath) -> {
+		downloadManifest().forEach((categoryOld, categoryPath) -> {
+			// TODO : should we change downloadManifest() and parseManifest(...) return type? or use this hack?
+			boolean removeUntracked;
+			final String category = (removeUntracked= categoryOld.startsWith("?")) ? categoryOld.substring(1) : categoryOld;
 			logger.log(Level.INFO, "Checking update for category \"" + category + "\" at path \"" + categoryPath.toString() + "\"");
 			downloadHashes(category, categoryPath).ifPresent(serverHashes -> {
 				serverHashes.forEach((path, hash) -> logger.log(Level.INFO, "Server respond file \"" + path + "\" with hash \"" + hash + "\""));
 				calcHashes(category, categoryPath).ifPresent(clientHashes -> {
+					if(!removeUntracked)
+					{
+						clientHashes.keySet().retainAll(serverHashes.keySet());
+					}
 					clientHashes.forEach((path, hash) -> logger.log(Level.INFO, "Client found file \"" + path + "\" with hash \"" + hash + "\""));
 					globalServerHashes.putAll(serverHashes);
 					globalClientHashes.putAll(clientHashes);
@@ -100,6 +107,7 @@ public final class Updater implements Runnable {
 			json.beginObject();
 			String category = null;
 			Path path = null;
+			boolean removeUntracked = true;
 			while (json.hasNext()) {
 				switch (json.nextName()) {
 				case "category":
@@ -113,6 +121,9 @@ public final class Updater implements Runnable {
 						return Collections.emptyMap();
 					}
 					break;
+				case "removeUntracked":
+					removeUntracked = json.nextBoolean();
+					break;
 				default:
 					logger.log(Level.WARNING, "Illegal hashes format");
 					return Collections.emptyMap();
@@ -122,7 +133,8 @@ public final class Updater implements Runnable {
 				logger.log(Level.WARNING, "Illegal hashes format");
 				return Collections.emptyMap();
 			}
-			manifest.put(category, path);
+			// TODO : dirty hack here
+			manifest.put(category + (removeUntracked ? "" : "?"), path);
 			json.endObject();
 		}
 		json.endArray();

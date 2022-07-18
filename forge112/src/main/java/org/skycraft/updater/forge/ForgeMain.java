@@ -1,6 +1,7 @@
 package org.skycraft.updater.forge;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.reflect.Field;
 import java.net.InetSocketAddress;
 import java.nio.file.InvalidPathException;
@@ -9,6 +10,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.FileHandler;
+import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import net.minecraftforge.common.config.Config;
 import net.minecraftforge.fml.common.FMLCommonHandler;
@@ -52,8 +55,16 @@ public final class ForgeMain {
 			ignores = Collections.emptyList();
 		}
 
+		java.util.logging.Logger updaterLogger = java.util.logging.Logger.getLogger("Updater");
+		try {
+			FileHandler fileHandler = new FileHandler("skycraft-updater.log");
+			fileHandler.setFormatter(new SimpleFormatter());
+			updaterLogger.addHandler(fileHandler);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 		Updater updater = new Updater(
-			java.util.logging.Logger.getLogger("Updater"),
+			updaterLogger,
 			new InetSocketAddress(Configs.serverIp, Configs.serverPort),
 			modContainer.getSource().toPath(),
 			clientPath,

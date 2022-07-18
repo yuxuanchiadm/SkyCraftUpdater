@@ -1,0 +1,25 @@
+patcher.main-frame.title=SkyCraft 更新器
+patcher.main-frame.message=SkyCraft 更新器 正在更新你的客户端...
+patcher.main-frame.progress.message=更新中...
+patcher.main-frame.progress.downloading-note=下载更新中 (%{progress}/%{total})...
+patcher.main-frame.progress.apply-update-note=安装更新中 (%{progress}/%{total})...
+
+patcher.input-read-error-dialog.title=SkyCraft 更新器
+patcher.input-read-error-dialog.message=无法解析Patcher输入，请汇报bug！
+
+patcher.download-error-dialog.title=SkyCraft 更新器
+patcher.download-error-dialog.message=下载更新失败，请汇报bug！
+
+patcher.apply-update-error-dialog.title=SkyCraft 更新器
+patcher.apply-update-error-dialog.message=安装更新失败，请汇报bug！
+
+patcher.updated-dialog.title=SkyCraft 更新器
+patcher.updated-dialog.message=更新成功，请重启游戏！
+
+patcher.log.waiting-minecraft=等待Minecraft进程结束中...
+patcher.log.update-cancelled=更新已被取消
+patcher.log.download-failed=无法下载更新
+patcher.log.download-failed-with-code=无法下载更新，服务器返回码为 %{code}
+patcher.log.apply-update-failed=无法安装更新
+patcher.log.removing-file=正在移除 %{file}...
+patcher.log.updating-file=正在更新 %{file}...

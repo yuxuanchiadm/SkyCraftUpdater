@@ -1,0 +1,25 @@
+patcher.main-frame.title=SkyCraft Updater
+patcher.main-frame.message=SkyCraft updater is updating your files...
+patcher.main-frame.progress.message=Updating files...
+patcher.main-frame.progress.downloading-note=Downloading updates (%{progress}/%{total})...
+patcher.main-frame.progress.apply-update-note=Applying updates (%{progress}/%{total})...
+
+patcher.input-read-error-dialog.title=SkyCraft Updater
+patcher.input-read-error-dialog.message=Could not read patcher input. Please report this bug!
+
+patcher.download-error-dialog.title=SkyCraft Updater
+patcher.download-error-dialog.message=Download updates failed. Please report this bug!
+
+patcher.apply-update-error-dialog.title=SkyCraft Updater
+patcher.apply-update-error-dialog.message=Apply updates failed. Please report this bug!
+
+patcher.updated-dialog.title=SkyCraft Updater
+patcher.updated-dialog.message=Files successfully updated. Please restart your game!
+
+patcher.log.waiting-minecraft=Waiting 3 seconds for minecraft process to stop...
+patcher.log.update-cancelled=Update cancelled
+patcher.log.download-failed=Could not download updates
+patcher.log.download-failed-with-code=Could not download updates, response code = %{code}
+patcher.log.apply-update-failed=Could not apply updates
+patcher.log.removing-file=Removing %{file}...
+patcher.log.updating-file=Updating %{file}...

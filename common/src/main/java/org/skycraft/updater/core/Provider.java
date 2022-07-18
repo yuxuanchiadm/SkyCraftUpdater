@@ -18,8 +18,10 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -283,6 +285,13 @@ public final class Provider implements Runnable, Closeable {
 			return;
 		}
 		Logger logger = Logger.getLogger("Provider");
+		try {
+			FileHandler fileHandler = new FileHandler("skycraft-updater-provider.log");
+			fileHandler.setFormatter(new SimpleFormatter());
+			logger.addHandler(fileHandler);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 		Path clientPath;
 		try {
 			clientPath = Paths.get(args[0]);

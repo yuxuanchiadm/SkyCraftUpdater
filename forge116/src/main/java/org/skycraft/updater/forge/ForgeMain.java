@@ -11,6 +11,8 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.FileHandler;
+import java.util.logging.SimpleFormatter;
 import java.util.stream.Collectors;
 import net.minecraft.network.IPacket;
 import net.minecraft.network.PacketBuffer;
@@ -93,8 +95,16 @@ public final class ForgeMain {
 			ignores = Collections.emptyList();
 		}
 
+		java.util.logging.Logger updaterLogger = java.util.logging.Logger.getLogger("Updater");
+		try {
+			FileHandler fileHandler = new FileHandler("skycraft-updater.log");
+			fileHandler.setFormatter(new SimpleFormatter());
+			updaterLogger.addHandler(fileHandler);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 		Updater updater = new Updater(
-			java.util.logging.Logger.getLogger("Updater"),
+			updaterLogger,
 			new InetSocketAddress(CONFIG_SERVER_IP.get(), CONFIG_SERVER_PORT.get()),
 			modFileInfo.getFile().getFilePath(),
 			FMLPaths.GAMEDIR.get(),

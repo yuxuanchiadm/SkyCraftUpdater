@@ -1,23 +1,15 @@
 package org.skycraft.updater.core;
 
 import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonWriter;
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -25,27 +17,19 @@ import java.util.logging.SimpleFormatter;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.eclipse.jetty.server.Request;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.ErrorHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.util.log.Log;
+import org.skycraft.updater.core.protocol.ProtocolHandler;
 
 public final class Provider implements Runnable, Closeable {
-	private static final String DEFAULT_CATEGORY = "mods";
-
 	private final Logger logger;
 	private final Path clientPath;
 	private final Path manifestPath;
 	private final InetSocketAddress address;
-	private Map<String, ManifestEntry> manifest;
-	private Map<String, ManifestCategory> categories;
-	private Map<String, Path> globalFiles;
-	private String precachedManifest;
 	private Server server;
 
 	public Provider(Logger logger, Path clientPath, Path manifestPath, InetSocketAddress address) {
@@ -53,6 +37,18 @@ public final class Provider implements Runnable, Closeable {
 		this.clientPath = clientPath;
 		this.manifestPath = manifestPath;
 		this.address = address;
+	}
+
+	public Logger getLogger() {
+		return logger;
+	}
+
+	public Path getClientPath() {
+		return clientPath;
+	}
+
+	public Path getManifestPath() {
+		return manifestPath;
 	}
 
 	@Override
@@ -67,9 +63,6 @@ public final class Provider implements Runnable, Closeable {
 	@Override
 	public void close() {
 		logger.log(Level.INFO, "Stopping updater provider...");
-		manifest = null;
-		categories = null;
-		precachedManifest = null;
 		if (server != null) {
 			try {
 				if (server.isRunning()) server.stop();
@@ -83,98 +76,25 @@ public final class Provider implements Runnable, Closeable {
 
 	private boolean precacheManifest() {
 		logger.log(Level.INFO, "Precaching provider manifest");
-		Map<String, ManifestEntry> manifest = new HashMap<>();
-		StringWriter out = new StringWriter();
-		try (JsonReader reader = new JsonReader(new InputStreamReader(Files.newInputStream(manifestPath), StandardCharsets.UTF_8)); JsonWriter writer = new JsonWriter(out)) {
-			writer.setIndent("    ");
-			reader.beginArray();
-			writer.beginArray();
-			while (reader.hasNext()) {
-				reader.beginObject();
-				writer.beginObject();
-				String category = null;
-				Path path = null;
-				while (reader.hasNext()) {
-					switch (reader.nextName()) {
-					case "category":
-						category = reader.nextString();
-						writer.name("category").value(category);
-						break;
-					case "path":
-						try {
-							path = Paths.get(reader.nextString());
-						} catch (InvalidPathException e) {
-							logger.log(Level.WARNING, "Illegal manifest format", e);
-							return false;
-						}
-						writer.name("path").value(path.toString());
-						break;
-					default:
-						logger.log(Level.WARNING, "Illegal manifest format");
-						return false;
-					}
-				}
-				if (category == null || path == null) {
-					logger.log(Level.WARNING, "Illegal manifest format");
-					return false;
-				}
-				ManifestEntry entry = new ManifestEntry(category, path);
-				manifest.put(category, entry);
-				writer.endObject();
-				reader.endObject();
+		for (Protocol protocol : Protocol.values()) {
+			ProtocolHandler protocolHandler = protocol.getHandler();
+			try (JsonReader reader = new JsonReader(new InputStreamReader(Files.newInputStream(manifestPath), StandardCharsets.UTF_8))) {
+				if (!protocolHandler.precacheManifest(this, reader)) return false;
+			} catch (IOException | IllegalStateException e) {
+				logger.log(Level.SEVERE, "Could not load provider manifest", e);
+				return false;
 			}
-			writer.endArray();
-			reader.endArray();
-		} catch (IOException | IllegalStateException e) {
-			logger.log(Level.SEVERE, "Could not load provider manifest", e);
-			return false;
 		}
-		this.manifest = manifest;
-		this.precachedManifest = out.toString();
 		logger.log(Level.INFO, "Manifest successfully precached");
 		return true;
 	}
 
 	private boolean precacheHashes() {
 		logger.log(Level.INFO, "Precaching manifest hashes...");
-		Map<String, ManifestCategory> categories = new HashMap<>();
-		Map<String, Path> globalFiles = new HashMap<>();
-		for (Map.Entry<String, ManifestEntry> entry : manifest.entrySet()) {
-			HashMap<String, Path> files = new HashMap<>();
-			StringWriter out = new StringWriter();
-			try (JsonWriter writer = new JsonWriter(out)) {
-				writer.setIndent("    ");
-				writer.beginArray();
-				Path categoryPath = clientPath.resolve(entry.getValue().getPath());
-				if (Files.exists(categoryPath)) {
-					for (Path path : (Iterable<? extends Path>) Files.walk(categoryPath)::iterator) {
-						if (!Files.isRegularFile(path)) continue;
-						String hash;
-						try (InputStream stream = Files.newInputStream(path)) {
-							hash = DigestUtils.md5Hex(stream);
-						} catch (IOException e) {
-							logger.log(Level.WARNING, "Could not calculate file hash", e);
-							continue;
-						}
-						files.put(hash, path);
-						globalFiles.put(hash, path);
-						writer.beginObject();
-						writer.name("path").value(categoryPath.relativize(path).toString());
-						writer.name("hash").value(hash);
-						writer.endObject();
-						logger.log(Level.INFO, "Found category \"" + entry.getValue().getCategory() + "\" file \"" + categoryPath.relativize(path) + "\" with hash \"" + hash + "\"");
-					}
-				}
-				writer.endArray();
-			} catch (IOException e) {
-				logger.log(Level.SEVERE, "Error occurred while precaching file hashes", e);
-				return false;
-			}
-			ManifestCategory category = new ManifestCategory(entry.getValue(), files, out.toString());
-			categories.put(entry.getKey(), category);
+		for (Protocol protocol : Protocol.values()) {
+			ProtocolHandler protocolHandler = protocol.getHandler();
+			if (!protocolHandler.precacheHashes(this)) return false;
 		}
-		this.categories = categories;
-		this.globalFiles = globalFiles;
 		logger.log(Level.INFO, "Manifest hashes successfully precached");
 		return true;
 	}
@@ -192,65 +112,27 @@ public final class Provider implements Runnable, Closeable {
 
 			}
 		});
-		handler.addServlet(new ServletHolder(new HttpServlet() {
-			@Override
-			protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-				if (precachedManifest == null) {
-					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-					return;
+		for (Protocol protocol : Protocol.values()) {
+			ProtocolHandler protocolHandler = protocol.getHandler();
+			handler.addServlet(new ServletHolder(new HttpServlet() {
+				@Override
+				protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+					protocolHandler.handleManifest(Provider.this, req, resp);
 				}
-				logger.log(Level.INFO, "Sending manifest to client " + req.getRemoteAddr());
-				resp.setContentType("application/json; charset=utf-8");
-				try (PrintWriter out = resp.getWriter()) {
-					out.write(precachedManifest);
+			}), protocolHandler.getProtocolURL("manifest"));
+			handler.addServlet(new ServletHolder(new HttpServlet() {
+				@Override
+				protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+					protocolHandler.handleHashes(Provider.this, req, resp);
 				}
-			}
-		}), "/manifest");
-		handler.addServlet(new ServletHolder(new HttpServlet() {
-			@Override
-			protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-				if (categories == null) {
-					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-					return;
+			}), protocolHandler.getProtocolURL("hashes"));
+			handler.addServlet(new ServletHolder(new HttpServlet() {
+				@Override
+				protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+					protocolHandler.handleDownload(Provider.this, req, resp);
 				}
-				String categoryName = Optional.ofNullable(req.getParameter("category")).orElse(DEFAULT_CATEGORY);
-				ManifestCategory category = categories.get(categoryName);
-				if (category == null) {
-					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-					return;
-				}
-				logger.log(Level.INFO, "Sending category \"" + category.getEntry().getCategory() + "\" hashes to client " + req.getRemoteAddr());
-				resp.setContentType("application/json; charset=utf-8");
-				try (PrintWriter out = resp.getWriter()) {
-					out.write(category.getPrecachedHashes());
-				}
-			}
-		}), "/hashes");
-		handler.addServlet(new ServletHolder(new HttpServlet() {
-			@Override
-			protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
-				if (globalFiles == null) {
-					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-					return;
-				}
-				String hash = req.getParameter("hash");
-				if (hash == null) {
-					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-					return;
-				}
-				Path path = globalFiles.get(hash);
-				if (path == null) {
-					resp.sendError(HttpServletResponse.SC_NOT_FOUND);
-					return;
-				}
-				logger.log(Level.INFO, "Sending category file \"" + path + "\" with hash \"" + hash + "\" to client " + req.getRemoteAddr());
-				resp.setContentType("application/octet-stream");
-				resp.setHeader("Content-Disposition", "attachment; filename=" + StringEscapeUtils.escapeJava(path.getFileName().toString()));
-				try (InputStream in = Files.newInputStream(path); OutputStream out = resp.getOutputStream()) {
-					IOUtils.copy(in, out);
-				}
-			}
-		}), "/download");
+			}), protocolHandler.getProtocolURL("download"));
+		}
 		server.setHandler(handler);
 		try {
 			server.start();
@@ -322,47 +204,5 @@ public final class Provider implements Runnable, Closeable {
 			new InetSocketAddress(serverIp, serverPort)
 		);
 		provider.run();
-	}
-
-	public static final class ManifestEntry {
-		private final String category;
-		private final Path path;
-
-		public ManifestEntry(String category, Path path) {
-			this.category = category;
-			this.path = path;
-		}
-
-		public String getCategory() {
-			return category;
-		}
-
-		public Path getPath() {
-			return path;
-		}
-	}
-
-	public static final class ManifestCategory {
-		private final ManifestEntry entry;
-		private final Map<String, Path> files;
-		private final String precachedHashes;
-
-		public ManifestCategory(ManifestEntry entry, Map<String, Path> files, String precachedHashes) {
-			this.entry = entry;
-			this.files = files;
-			this.precachedHashes = precachedHashes;
-		}
-
-		public ManifestEntry getEntry() {
-			return entry;
-		}
-
-		public Map<String, Path> getFiles() {
-			return files;
-		}
-
-		public String getPrecachedHashes() {
-			return precachedHashes;
-		}
 	}
 }

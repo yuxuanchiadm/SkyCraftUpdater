@@ -17,6 +17,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -25,6 +26,8 @@ import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.skycraft.updater.core.data.ManifestEntry;
+import org.skycraft.updater.utils.PathUtils;
 
 public final class Updater implements Runnable {
 	private final Logger logger;
@@ -47,11 +50,11 @@ public final class Updater implements Runnable {
 	public void run() {
 		Map<Path, String> globalServerHashes = new HashMap<>();
 		Map<Path, String> globalClientHashes = new HashMap<>();
-		downloadManifest().forEach((category, categoryPath) -> {
-			logger.log(Level.INFO, "Checking update for category \"" + category + "\" at path \"" + categoryPath.toString() + "\"");
-			downloadHashes(category, categoryPath).ifPresent(serverHashes -> {
+		downloadManifest().forEach((category, entry) -> {
+			logger.log(Level.INFO, "Checking update for category \"" + category + "\" at path \"" + entry.getPath() + "\"");
+			downloadHashes(category, entry).ifPresent(serverHashes -> {
 				serverHashes.forEach((path, hash) -> logger.log(Level.INFO, "Server respond file \"" + path + "\" with hash \"" + hash + "\""));
-				calcHashes(category, categoryPath).ifPresent(clientHashes -> {
+				calcHashes(category, entry).ifPresent(clientHashes -> {
 					clientHashes.forEach((path, hash) -> logger.log(Level.INFO, "Client found file \"" + path + "\" with hash \"" + hash + "\""));
 					globalServerHashes.putAll(serverHashes);
 					globalClientHashes.putAll(clientHashes);
@@ -61,11 +64,11 @@ public final class Updater implements Runnable {
 		updateFiles(globalServerHashes, globalClientHashes);
 	}
 
-	private Map<String, Path> downloadManifest() {
+	private Map<String, ManifestEntry> downloadManifest() {
 		logger.log(Level.INFO, "Downloading manifest...");
 
 		try {
-			URLConnection connection = new URL("http", address.getHostString(), address.getPort(), "/manifest").openConnection();
+			URLConnection connection = new URL("http", address.getHostString(), address.getPort(), Protocol.CURRENT_PROTOCOL.getHandler().getProtocolURL("manifest")).openConnection();
 			if (!(connection instanceof HttpURLConnection)) {
 				logger.log(Level.WARNING, "Could not contact update server");
 				return Collections.emptyMap();
@@ -93,13 +96,14 @@ public final class Updater implements Runnable {
 		}
 	}
 
-	private Map<String, Path> parseManifest(JsonReader json) throws IOException {
-		Map<String, Path> manifest = new HashMap<>();
+	private Map<String, ManifestEntry> parseManifest(JsonReader json) throws IOException {
+		Map<String, ManifestEntry> entryMap = new HashMap<>();
 		json.beginArray();
 		while (json.hasNext()) {
 			json.beginObject();
 			String category = null;
 			Path path = null;
+			List<String> ignoreClient = new ArrayList<>();
 			while (json.hasNext()) {
 				switch (json.nextName()) {
 				case "category":
@@ -113,27 +117,35 @@ public final class Updater implements Runnable {
 						return Collections.emptyMap();
 					}
 					break;
+				case "ignore-client":
+					json.beginArray();
+					while (json.hasNext()) {
+						String ignore = json.nextString();
+						ignoreClient.add(ignore);
+					}
+					json.endArray();
+					break;
 				default:
-					logger.log(Level.WARNING, "Illegal hashes format");
-					return Collections.emptyMap();
+					json.skipValue();
 				}
 			}
 			if (category == null || path == null) {
 				logger.log(Level.WARNING, "Illegal hashes format");
 				return Collections.emptyMap();
 			}
-			manifest.put(category, path);
+			ManifestEntry entry = new ManifestEntry(category, path, new ArrayList<>(), ignoreClient);
+			entryMap.put(category, entry);
 			json.endObject();
 		}
 		json.endArray();
-		return manifest;
+		return entryMap;
 	}
 
-	private Optional<Map<Path, String>> downloadHashes(String category, Path categoryPath) {
+	private Optional<Map<Path, String>> downloadHashes(String category, ManifestEntry entry) {
 		logger.log(Level.INFO, "Downloading category \"" + category + "\" hashes...");
 
 		try {
-			URLConnection connection = new URL("http", address.getHostString(), address.getPort(), "/hashes?category=" + URLEncoder.encode(category, "UTF-8")).openConnection();
+			URLConnection connection = new URL("http", address.getHostString(), address.getPort(), Protocol.CURRENT_PROTOCOL.getHandler().getProtocolURL("hashes") + "?category=" + URLEncoder.encode(category, "UTF-8")).openConnection();
 			if (!(connection instanceof HttpURLConnection)) {
 				logger.log(Level.WARNING, "Could not contact update server");
 				return Optional.empty();
@@ -147,7 +159,7 @@ public final class Updater implements Runnable {
 					return Optional.empty();
 				}
 				try (JsonReader json = new JsonReader(new InputStreamReader(http.getInputStream(), StandardCharsets.UTF_8))) {
-					return parseHashes(json, categoryPath);
+					return parseHashes(json, entry);
 				} catch (IllegalStateException e) {
 					logger.log(Level.WARNING, "Illegal hashes format", e);
 					return Optional.empty();
@@ -161,7 +173,7 @@ public final class Updater implements Runnable {
 		}
 	}
 
-	private Optional<Map<Path, String>> parseHashes(JsonReader json, Path categoryPath) throws IOException {
+	private Optional<Map<Path, String>> parseHashes(JsonReader json, ManifestEntry entry) throws IOException {
 		Map<Path, String> hashes = new HashMap<>();
 		json.beginArray();
 		while (json.hasNext()) {
@@ -172,7 +184,7 @@ public final class Updater implements Runnable {
 				switch (json.nextName()) {
 				case "path":
 					try {
-						path = categoryPath.resolve(Paths.get(json.nextString()));
+						path = entry.getPath().resolve(Paths.get(json.nextString()));
 					} catch (InvalidPathException e) {
 						logger.log(Level.WARNING, "Illegal hashes format", e);
 						return Optional.empty();
@@ -182,8 +194,7 @@ public final class Updater implements Runnable {
 					hash = json.nextString();
 					break;
 				default:
-					logger.log(Level.WARNING, "Illegal hashes format");
-					return Optional.empty();
+					json.skipValue();
 				}
 			}
 			if (path == null || hash == null) {
@@ -197,15 +208,16 @@ public final class Updater implements Runnable {
 		return Optional.of(hashes);
 	}
 
-	private Optional<Map<Path, String>> calcHashes(String category, Path categoryPath) {
+	private Optional<Map<Path, String>> calcHashes(String category, ManifestEntry entry) {
 		logger.log(Level.INFO, "Calculating category \"" + category + "\" file hashes...");
 
 		Map<Path, String> hashes = new HashMap<>();
 		try {
-			if (Files.exists(categoryPath)) {
-				for (Path path : (Iterable<? extends Path>) Files.walk(categoryPath)::iterator) {
-					if (!Files.isRegularFile(path))
-						continue;
+			if (Files.exists(entry.getPath())) {
+				for (Path path : (Iterable<? extends Path>) Files.walk(entry.getPath())::iterator) {
+					if (!Files.isRegularFile(path)) continue;
+					String relativePath = entry.getPath().relativize(path).toString().replace('\\', '/');
+					if (entry.getIgnoreServer().stream().anyMatch(ignore -> PathUtils.matchWildcard(relativePath, ignore.replace('\\', '/')))) continue;
 					String hash;
 					try (InputStream stream = Files.newInputStream(path)) {
 						hash = DigestUtils.md5Hex(stream);

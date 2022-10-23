@@ -60,8 +60,12 @@ shadowJar {
         "org.apache.commons.io.",
         "org.apache.commons.codec.",
         "org.eclipse.jetty.",
+        "org.yaml.",
         "javax.servlet.",
-        "com.google.gson."
+        "javax.annotation.",
+        "javax.inject.",
+        "com.google.gson.",
+        "ch.jalu"
     ]
     packages.each { relocate(it, "org.skycraft.updater.shades.${it}") }
     classifier null

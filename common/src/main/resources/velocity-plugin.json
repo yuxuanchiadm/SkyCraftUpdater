@@ -1,0 +1,6 @@
+{
+  "id":"skycraftupdater",
+  "name":"SkyCraftUpdater",
+  "version":"${version}",
+  "main":"org.skycraft.updater.velocity.VelocityMain"
+}
